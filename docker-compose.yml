@@ -1,0 +1,41 @@
+version: '3'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  boids0:
+    build: .
+    environment:
+      - NPROCS=3
+      - RANK=0
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids1:
+    build: .
+    environment:
+      - NPROCS=3
+      - RANK=1
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids2:
+    build: .
+    environment:
+      - NPROCS=3
+      - RANK=2
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
