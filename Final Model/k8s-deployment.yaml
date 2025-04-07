@@ -1,0 +1,407 @@
+# -----------------------------------------------------------------------------------------------------------------------
+# Configure and deploy the Kubernetes resources for running the distributed model alongside a RabbitMQ messaging service
+# -----------------------------------------------------------------------------------------------------------------------
+
+# -----------------------------------
+# Kubernetes Deployment for RabbitMQ
+# -----------------------------------
+---
+apiVersion: apps/v1                   # Specifying API Version for Deployment
+kind: Deployment                      # Define a Deployment resource
+metadata:
+  name: rabbitmq                      # Naming the Deployment 'rabbitmq'
+spec:
+  replicas: 1                         # Specifying that only one pod is needed
+  selector:
+    matchLabels:
+      app: rabbitmq                   # Using the label 'app: rabbitmq' to select pods managed by this Deployment
+  template:
+    metadata:
+      labels:
+        app: rabbitmq                 # Applying the label 'app: rabbitmq' to the pods created by this Deployment
+    spec:
+      containers:
+      - name: rabbitmq                # Naming the container 'rabbitmq'
+        image: rabbitmq:3-management  # Using the RabbitMQ image with management plugin enabled
+        ports:
+        - containerPort: 5672         # Expose port 5672 inside the container (amqp)
+        - containerPort: 15672        # Expose port 15672 inside the container (management web interface)
+
+# --------------------------------
+# Kubernetes Service for RabbitMQ
+# --------------------------------
+---
+apiVersion: v1
+kind: Service           # Define a Service resource
+metadata:
+  name: rabbitmq        # Name the Service 'rabbitmq'
+spec:
+  selector:
+    app: rabbitmq       # Service targeting pods with the label 'app: rabbitmq'
+  ports:
+    - name: amqp        # Name this port mapping 'amqp'
+      port: 5672        # Expose port 5672 on the Service
+      targetPort: 5672  # Forward traffic to port 5672 on the pods
+    - name: management  # Name this port mapping 'management'
+      port: 15672       # Expose port 15672 on the Service
+      targetPort: 15672 # Forward traffic to port 15672 on the pods
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 0)
+# ----------------------------------------
+---
+apiVersion: batch/v1
+kind: Job                             # Define a Job resource
+metadata:
+  name: boids0-job                    # Naming the Rank 0 Boids Model Job 'boids0-job' for the kubernetes process 
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids0                   # Label the pod as part of the boids model for rank 0
+    spec:
+      restartPolicy: Never            # Do not restart the container if it fails
+      containers:
+      - name: boids0                  # Naming the container 'boids0'
+        image: mjpritch/boids:latest  # Using the latest Docker image for the boids simulation
+        imagePullPolicy: Always       # Always pull the latest image from the repository
+        env:
+          - name: NPROCS              
+            value: "10"               # Setting the environment variable for the total number of processes
+          - name: RANK
+            value: "0"                # Setting the environment variable for this container's rank
+          - name: RABBITMQ_HOST       # Setting the RabbitMQ host environment variable
+            value: "rabbitmq"         # Using the service name 'rabbitmq' for DNS resolution within the cluster
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "0", "3"]  # Overwriting default command from 'dockerfile' to update for NPROCS and RANK
+        volumeMounts:
+          - name: boids-output        # Mount a volume named 'boids-output' to persist output data
+            mountPath: /app/output    # Mount it at '/app/output' inside the container
+      volumes:
+        - name: boids-output          # Define the volume 'boids-output'
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids0-output # Specifying host path where output files are to be written
+            type: DirectoryOrCreate   # Create the directory if it does not already exist
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 1)
+# ----------------------------------------
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids1-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids1
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids1
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "1"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "1", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids1-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 2)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids2-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids2
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids2
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "2"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids2-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 3)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids3-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids3
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids3
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "3"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids3-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 4)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids4-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids4
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids4
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "4"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids4-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 5)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids5-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids5
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids5
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "5"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids5-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 6)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids6-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids6
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids6
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "6"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids6-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 7)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids7-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids7
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids7
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "7"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids7-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 8)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids8-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids8
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids8
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "8"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids8-output
+            type: DirectoryOrCreate
+
+# ----------------------------------------
+# Kubernetes Job for Boids Model (Rank 9)
+# ----------------------------------------            
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: boids9-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: boids9
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: boids9
+        image: mjpritch/boids:latest
+        imagePullPolicy: Always
+        env:
+          - name: NPROCS
+            value: "10"
+          - name: RANK
+            value: "9"
+          - name: RABBITMQ_HOST
+            value: "rabbitmq"
+        command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "3"]
+        volumeMounts:
+          - name: boids-output
+            mountPath: /app/output
+      volumes:
+        - name: boids-output
+          hostPath:
+            path: /mnt/c/Users/MorganP/BoidsDocker3/RancherOutput/boids9-output
+            type: DirectoryOrCreate                                                                                    

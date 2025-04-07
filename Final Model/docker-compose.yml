@@ -1,0 +1,147 @@
+# Specify the version of the Docker Compose file format.
+version: '3'
+
+# Define the services that make up this multi-container model.
+services:
+  # -----------------
+  # RabbitMQ Service
+  # -----------------
+  rabbitmq:
+    # Use the RabbitMQ image with the management plugin enabled for web based monitoring
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    # Map ports from the container to the host machine.    
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+# --------------------
+# Boids Model Service 
+# --------------------
+# Builds and runs the specified boids containers. This is where the model is split for distribution as well as in the 'k8s-deployment.yaml' file.
+  boids0:
+  # Build the Docker image using the Dockerfile located in the current directory.
+    build: .
+    # Container specific environment variables.
+    environment:
+      - NPROCS=10               # Total number of simulation processes in the distributed system.
+      - RANK=0                  # The identifier for this instance.
+      - RABBITMQ_HOST=rabbitmq  # The hostname of the RabbitMQ service; using the service name allows Docker to resolve it automatically.
+    # Instructs the container on what commands to run. Note that "0" refers to the current instance identifier and "10" refers to the total number of processes in the distributed system.  
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "0", "10"]  
+    # Start RabbitMQ service before this service.      
+    depends_on:
+      - rabbitmq
+    # Mount a volume to share the output files between the container and the host.      
+    volumes:
+      - ./output:/app/output
+
+  boids1:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=1
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "1", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids2:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=2
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "2", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids3:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=3
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "3", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids4:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=4
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "4", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids5:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=5
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "5", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids6:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=6
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "6", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids7:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=7
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "7", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids8:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=8
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "8", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output
+
+  boids9:
+    build: .
+    environment:
+      - NPROCS=10
+      - RANK=9
+      - RABBITMQ_HOST=rabbitmq
+    command: ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "9", "10"]  
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./output:/app/output                   
+      
+                             

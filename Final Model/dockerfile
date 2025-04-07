@@ -1,0 +1,27 @@
+# Use an Ubuntu Linux Distro base image.
+FROM ubuntu:22.04
+
+# Update the package lists and install the required packages.
+# - build-essential:    Provides compiler and build tools.
+# - cmake:              Required for configuring the build process.
+# - librabbitmq-dev:    Development files for RabbitMQ messaging.
+# - netcat-openbsd:     Utility for checking network connectivity.
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    librabbitmq-dev \
+    netcat-openbsd 
+
+# Set the working directory inside the container to /app for copying source files and performing the build.
+WORKDIR /app
+
+# Copy the entire project directory from the host into the container at /app.
+COPY . /app
+
+# Ensure that the project is built fresh every time the container is built.
+RUN rm -rf build && mkdir -p build && cd build && cmake .. && cmake --build .
+
+# Default command: wait-for-rabbitmq script used to delay starting distributed_main until RabbitMQ is ready.
+# This command is overwritten for each instance with updated NPROCS and specific RANK in 'docker-compose.yml'
+CMD ["/app/wait-for-rabbitmq.sh", "rabbitmq", "5672", "./build/distributed_main", "0", "1"]
